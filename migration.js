@@ -2,6 +2,7 @@ const contentful = require('contentful-management')
 const axios = require('axios')
 const fs = require('fs');
 const TurndownService = require('turndown')
+const { parseHtml } = require('contentful-html-rich-text-converter');
 
 /**
  * Global variables that we're going use throughout this script
@@ -11,7 +12,7 @@ const TurndownService = require('turndown')
 /**
  * Main WordPress endpoint.
  */
-const wpEndpoint = `https://mywebsite.com/wp-json/wp/v2/`
+const wpEndpoint = ``
 
 /**
  * API Endpoints that we'd like to receive data from
@@ -19,18 +20,15 @@ const wpEndpoint = `https://mywebsite.com/wp-json/wp/v2/`
  */
 let wpData = {
   'posts': [],
-  'tags': [],
-  'categories': [],
-  'media': []
 };
 
 /**
  * Contentful API requirements
  */
 const ctfData = {
-  accessToken: '[ACCESS_TOKEN]',
-  environment: '[ENVIRONMENT_ID]',
-  spaceId: '[SPACE_ID]'
+  accessToken: '',
+  environment: '',
+  spaceId: ''
 }
 Object.freeze(ctfData);
 
@@ -111,29 +109,59 @@ turndownService.addRule('replaceWordPressImages', {
  * -----------------------------------------------------------------------------
  */
 
-function migrateContent() {
+async function migrateContent() {
   let promises = [];
 
   console.log(logSeparator)
   console.log(`Getting WordPress API data`)
   console.log(logSeparator)
 
-  // Loop over our content types and create API endpoint URLs
-  for (const [key, value] of Object.entries(wpData)) {
-    let wpUrl = `${wpEndpoint}${key}?per_page=90`
-    promises.push(wpUrl)
+  async function makeApiCall(offset = 0, responses = []) {
+    const response = await fetchData(`${wpEndpoint}posts?per_page=90&offset=${offset}&_embed`);
+    // console.log(response)
+    if (response.data.length === 0) {
+      console.log('Received empty array, stopping API calls.');
+      return responses;
+    }
+    console.log(`Received data with offset ${offset}`);
+    responses = [...responses, ...response.data];
+    // console.log(responses)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return await makeApiCall(offset + 90, responses);
   }
 
-  // console.log(promises)
-  getAllData(promises)
+  makeApiCall()
     .then(response =>{
-      apiData = response
+      apiData = [{
+        success: true,
+        endpoint: '',
+        data: response
+      }]
+      // console.log(apiData)
 
       mapData();
 
     }).catch(error => {
       console.log(error)
     })
+
+  // Loop over our content types and create API endpoint URLs
+  // for (const [key, value] of Object.entries(wpData)) {
+  //   let wpUrl = `${wpEndpoint}${key}?per_page=90&_embed`
+  //   promises.push(wpUrl)
+  // }
+
+  // // console.log(promises)
+  // getAllData(promises)
+  //   .then(response =>{
+  //     // console.log(response)
+  //     apiData = response;
+
+  //     mapData();
+
+  //   }).catch(error => {
+  //     console.log(error)
+  //   })
 }
 
 function getAllData(URLs){
@@ -163,6 +191,8 @@ function mapData() {
 
   // Loop over our conjoined data structure and append data types to each child.
   for (const [index, [key, value]] of Object.entries(Object.entries(wpData))) {
+    // console.log(index)
+    // console.log(apiData[index])
     apiData[index].endpoint = key
   }
 
@@ -179,18 +209,371 @@ function mapData() {
      * and the value be the WP post value. We will later match the keys
      * used here to their Contentful fields in the API.
      */
+
+    const getAuthor = (author) => {
+      switch (author) {
+        case 3:
+          return "183lJRcw6dF75lJX2bNgAe"
+        case 6:
+        case 1:
+          return  "5I27RwkdS6CP6XjC2WpqLC"
+        case 11:
+          return "5fqUZsu3MM6WiDTn7d6EDu"
+        case 9:
+          return "7b3CL6NQ42SDSiU3CzSJRb"
+        case 5:
+          return "3oHaFoRyTUkPCEAdsqZfaJ"
+        case 8:
+          return "5JkK25E4sibcQVYK1FfDbg"
+        case 19:
+          return "387x12Q3htyayZgFICo05u"
+        case 18:
+          return "6oppQ7RJ2T5BpHtedsHGqw"
+        case 20:
+          return "18bAavq2WVilJIdZnzO1IP"
+        case 4:
+          return "3wmsBDS946ePClCbgSJCJw"
+        case 13:
+          return "2YGZCFuWg8NWkrgOu6F5DZ"
+        case 2:
+        case 7:
+        case 22:
+        default:
+          return "6bcbiBjnMl8RTR3XtplFiN"
+      }
+    }
+
+    const contentfulCategories = [
+      {
+        "slug": "college-admissions",
+        "id": "5gnU0HnYwA4pW5quRpmOyz"
+      },
+      {
+        "slug": "college-housing",
+        "id": "1QOpqFKdlo7aMi8OwHKdwO"
+      },
+      {
+        "slug": "community-college",
+        "id": "5LQBov519YC42PIM50UoX7"
+      },
+      {
+        "slug": "exams",
+        "id": "2obd94clBGsisOcFvbxViL"
+      },
+      {
+        "slug": "financial-aid",
+        "id": "4SbNd7UdRi5mJAt4cw0YHp"
+      },
+      {
+        "slug": "international-students",
+        "id": "5k0Quixlp0gywwB7lxXlzJ"
+      },
+      {
+        "slug": "saving-for-college",
+        "id": "6whrITEUs7KjJGUkXLjBWU"
+      },
+      {
+        "slug": "scholarships",
+        "id": "Sq3qcP98UzUo2eHdHSk4R"
+      },
+      {
+        "slug": "tax-credit",
+        "id": "341kLaA5F0y74dcSe8cSE8"
+      },
+      {
+        "slug": "work-study",
+        "id": "4FdG3cEXy417OAeAK2Jy99"
+      },
+      {
+        "slug": "to-be-sorted",
+        "id": "6yTIHv0HSb0EecUXiv160n"
+      },
+      {
+        "slug": "all-loans",
+        "id": "undefined"
+      },
+      {
+        "slug": "medical-school-loans",
+        "id": "3NbdptxC0palyU2YTuNIfz"
+      },
+      {
+        "slug": "parent-loan",
+        "id": "46tUjVoZ3eVp1IYifrE7er"
+      },
+      {
+        "slug": "personal-loans",
+        "id": "7fdjYba9UllB92A1eA6ERW"
+      },
+      {
+        "slug": "private-student-loans",
+        "id": "5GPBIFuCtvlri70OCn1gH2"
+      },
+      {
+        "slug": "student-loan-reviews",
+        "id": "5FQGunVoXRZqW8scvQUntU"
+      },
+      {
+        "slug": "student-loans",
+        "id": "5xNqX7ueBzxQqMe0TDh4Si"
+      },
+      {
+        "slug": "federal-student-loan-repayment",
+        "id": "3YUdssNZa4IrlVgm4uqPnw"
+      },
+      {
+        "slug": "refinance-student-loans",
+        "id": "4koJBNVgTIKCv59SE4kWfV"
+      },
+      {
+        "slug": "student-loan-consolidation",
+        "id": "33orQOTyncgCovZlaf7p2E"
+      },
+      {
+        "slug": "student-loan-forgiveness",
+        "id": "1rbI9zmqBkIjZSyJLBxwd9"
+      },
+      {
+        "slug": "student-loan-repayment-options",
+        "id": "01B2WLoktC2p1i8mVtejhJ"
+      },
+      {
+        "slug": "student-loan-tax-deduction",
+        "id": "2NDahQF32Negr3lAMVON3N"
+      },
+      {
+        "slug": "blog",
+        "id": "1oqvjztSa2LG0cKleHNFoc"
+      },
+      {
+        "slug": "covid-19",
+        "id": "1Vt8h0kDpEkEptX0nfdnn2"
+      },
+      {
+        "slug": "politics",
+        "id": "7lCnsrs1AY6XWAp7ZRzFgK"
+      },
+      {
+        "slug": "research",
+        "id": "sc4NUQGz0XvXVTmHrqha0"
+      }
+    ]
+
+    const wpCategories = [
+      {
+        "id": 4616,
+        "slug": "loans"
+      },
+      {
+        "id": 83,
+        "slug": "blog"
+      },
+      {
+        "id": 63,
+        "slug": "borrow"
+      },
+      {
+        "id": 3897,
+        "slug": "college-admissions"
+      },
+      {
+        "id": 4617,
+        "slug": "college-housing"
+      },
+      {
+        "id": 4852,
+        "slug": "community-college"
+      },
+      {
+        "id": 4084,
+        "slug": "compare"
+      },
+      {
+        "id": 3059,
+        "slug": "covid-19"
+      },
+      {
+        "id": 4615,
+        "slug": "exams"
+      },
+      {
+        "id": 1415,
+        "slug": "federal-student-loan-repayment"
+      },
+      {
+        "id": 37,
+        "slug": "financial-aid"
+      },
+      {
+        "id": 3847,
+        "slug": "international-students"
+      },
+      {
+        "id": 4743,
+        "slug": "investing"
+      },
+      {
+        "id": 4672,
+        "slug": "life-after-college"
+      },
+      {
+        "id": 4618,
+        "slug": "medical-school-loans"
+      },
+      {
+        "id": 5361,
+        "slug": "minimum-wage"
+      },
+      {
+        "id": 328,
+        "slug": "news"
+      },
+      {
+        "id": 67,
+        "slug": "parent-loan"
+      },
+      {
+        "id": 863,
+        "slug": "personal-loans"
+      },
+      {
+        "id": 62,
+        "slug": "plan"
+      },
+      {
+        "id": 85,
+        "slug": "politics"
+      },
+      {
+        "id": 70,
+        "slug": "private-student-loans"
+      },
+      {
+        "id": 4085,
+        "slug": "compare-loans"
+      },
+      {
+        "id": 73,
+        "slug": "refinance-student-loans"
+      },
+      {
+        "id": 4675,
+        "slug": "compare-refinance-student-loans"
+      },
+      {
+        "id": 64,
+        "slug": "repay"
+      },
+      {
+        "id": 4088,
+        "slug": "research"
+      },
+      {
+        "id": 65,
+        "slug": "resources"
+      },
+      {
+        "id": 38,
+        "slug": "saving-for-college"
+      },
+      {
+        "id": 39,
+        "slug": "scholarships"
+      },
+      {
+        "id": 74,
+        "slug": "student-credit-cards"
+      },
+      {
+        "id": 4086,
+        "slug": "compare-creditcards"
+      },
+      {
+        "id": 4619,
+        "slug": "student-loan-consolidation"
+      },
+      {
+        "id": 3833,
+        "slug": "student-loan-forgiveness"
+      },
+      {
+        "id": 81,
+        "slug": "student-loan-repayment-options"
+      },
+      {
+        "id": 75,
+        "slug": "student-loan-reviews"
+      },
+      {
+        "id": 4621,
+        "slug": "student-loan-tax-deduction"
+      },
+      {
+        "id": 66,
+        "slug": "student-loans"
+      },
+      {
+        "id": 3891,
+        "slug": "tax-credit"
+      },
+      {
+        "id": 1,
+        "slug": "uncategorized"
+      },
+      {
+        "id": 2499,
+        "slug": "work-study"
+      }
+    ]
+
+    const mapCategoryToContentfulID = (wpCatID) => {
+      const wpCatSlug = wpCategories.find(wpCat => wpCat.id === wpCatID)?.slug;
+      return contentfulCategories.find(contentfulCategory => contentfulCategory.slug === wpCatSlug)?.id;
+    }
+
+    const mapCategoriesToContentfulEntityLink = (wpCatIDs) => {
+      if (wpCatIDs && wpCatIDs.length > 0) {
+        return wpCatIDs.map((wpCatID) => {
+          return {
+            sys: {
+              type: 'Link',
+              linkType: 'Entry',
+              id: mapCategoryToContentfulID(wpCatID),
+            }
+          };
+        })
+      } else {
+        return [{
+          sys: {
+            type: 'Link',
+            linkType: 'Entry',
+            id: "6wFUfEfoZWICKo0YRQa7Ck",
+          }
+        }];
+      }
+    }
+
+    const content = parseHtml(postData.content.rendered);
+
     let fieldData = {
       id: postData.id,
-      type: postData.type,
-      postTitle: postData.title.rendered,
       slug: postData.slug,
-      content: postData.content.rendered,
-      publishDate: postData.date_gmt + '+00:00',
-      featuredImage: postData.featured_media,
-      tags: getPostLabels(postData.tags, 'tags'),
-      categories: getPostLabels(postData.categories, 'categories'),
-      contentImages: getPostBodyImages(postData)
+      title: postData.title.rendered,
+      summary: postData.excerpt.rendered.replace(/(<([^>]+)>)/gi, "").replace(' [&hellip;]', '...').replace('[&hellip;]', '...'),
+      author: postData.author,
+      originalPublishedDate: postData.date_gmt + '+00:00',
+      // content: content,
+      featuredImage: postData["_embedded"]["wp:featuredmedia"] ? postData["_embedded"]["wp:featuredmedia"][0]["source_url"] : undefined,
+      author: {
+        sys: {
+          type: 'Link',
+          linkType: 'Entry',
+          id: getAuthor(postData.author),
+        }
+      },
+      subcategories: mapCategoriesToContentfulEntityLink(postData.categories)
     }
+
+    // console.log(postData["_embedded"]["wp:featuredmedia"] ? postData["_embedded"]["wp:featuredmedia"][0]["source_url"] : undefined)
 
     wpData.posts.push(fieldData)
   }
@@ -318,19 +701,19 @@ function buildContentfulAssets(environment) {
 
   // For every image in every post, create a new asset.
   for (let [index, wpPost] of wpData.posts.entries()) {
-    for (const [imgIndex, contentImage] of wpPost.contentImages.entries()) {
+    if (wpPost.featuredImage) {
       let assetObj = {
         title: {
-          'en-GB': contentImage.title
+          'en-US': wpPost.title
         },
         description: {
-          'en-GB': contentImage.description
+          'en-US': wpPost.title
         },
         file: {
-          'en-GB': {
+          'en-US': {
             contentType: 'image/jpeg',
-            fileName: contentImage.link.split('/').pop(),
-            upload: encodeURI(contentImage.link)
+            fileName: wpPost.featuredImage.split('/').pop(),
+            upload: encodeURI(wpPost.featuredImage)
           }
         }
       }
@@ -373,14 +756,14 @@ function getAndStoreAssets(environment, assets) {
       // console.log(result)
       contentfulData.assets = []
       for (const item of result.data.items) {
-        contentfulData.assets.push(item.fields.file['en-GB'].url)
+        contentfulData.assets.push(item.fields.file['en-US'].url)
       }
 
       createContentfulPosts(environment, assets)
 
     }).catch((err) => {
       console.log(err)
-      return error
+      return err
     });
     console.log(`...Done!`)
     console.log(logSeparator)
@@ -399,7 +782,6 @@ function createContentfulAssets(environment, promises, assets) {
     promises.map((asset, index) => new Promise(async resolve => {
 
       let newAsset
-      // console.log(`Creating: ${post.slug['en-GB']}`)
       setTimeout(() => {
         try {
           newAsset = environment.createAsset({
@@ -408,10 +790,10 @@ function createContentfulAssets(environment, promises, assets) {
           .then((asset) => asset.processForAllLocales())
           .then((asset) => asset.publish())
           .then((asset) => {
-            console.log(`Published Asset: ${asset.fields.file['en-GB'].fileName}`);
+            console.log(`Published Asset: ${asset.fields.file['en-US'].fileName}`);
             assets.push({
               assetId: asset.sys.id,
-              fileName: asset.fields.file['en-GB'].fileName
+              fileName: asset.fields.file['en-US'].fileName
             })
           })
         } catch (error) {
@@ -440,10 +822,10 @@ function createContentfulPosts(environment, assets) {
    *
    * Results:
    *  postTitle: {
-   *    'en-GB': wpPost.postTitle
+   *    'en-US': wpPost.postTitle
    *   },
    *  slug: {
-   *    'en-GB': wpPost.slug
+   *    'en-US': wpPost.slug
    *  },
    */
   let promises = []
@@ -453,9 +835,9 @@ function createContentfulPosts(environment, assets) {
 
     for (let [postKey, postValue] of Object.entries(post)) {
       // console.log(`postKey: ${postValue}`)
-      if (postKey === 'content') {
-        postValue = turndownService.turndown(postValue)
-      }
+      // if (postKey === 'content') {
+      //   postValue = turndownService.turndown(postValue)
+      // }
 
       /**
        * Remove values/flags/checks used for this script that
@@ -469,7 +851,7 @@ function createContentfulPosts(environment, assets) {
 
       if (!keysToSkip.includes(postKey)) {
         postFields[postKey] = {
-          'en-GB': postValue
+          'en-US': postValue
         }
       }
 
@@ -480,8 +862,10 @@ function createContentfulPosts(environment, assets) {
           }
         })[0];
 
+        console.log(postKey)
+
         postFields.featuredImage = {
-          'en-GB': {
+          'en-US': {
             sys: {
               type: 'Link',
               linkType: 'Asset',
@@ -497,9 +881,11 @@ function createContentfulPosts(environment, assets) {
       }
     }
     promises.push(postFields)
+    // break;
   }
 
   console.log(`Post objects created, attempting to create entries...`)
+  // console.log(promises)
   createContentfulEntries(environment, promises)
     .then((result) => {
       console.log(logSeparator);
@@ -520,16 +906,17 @@ function createContentfulEntries(environment, promises) {
 
     let newPost
 
-    console.log(`Attempting: ${post.slug['en-GB']}`)
+    console.log(`Attempting: ${post.slug['en-US']}`)
+    // console.log(post.featuredImage['en-US'])
 
     setTimeout(() => {
       try {
-        newPost = environment.createEntry('blogPost', {
+        newPost = environment.createEntry('post', {
           fields: post
         })
-        .then((entry) => entry.publish())
+        // .then((entry) => entry.publish())
         .then((entry) => {
-          console.log(`Success: ${entry.fields.slug['en-GB']}`)
+          console.log(`Success: ${entry.fields.slug['en-US']}`)
         })
       } catch (error) {
         throw(Error(error))
